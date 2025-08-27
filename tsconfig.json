@@ -9,7 +9,7 @@
       ],
       "@components/*": ["components/*"],
       "@assets/*": ["assets/*"],
-      "@app/*": ["app/*"]
+      "@app/*": ["app/*"],
     }
   },
   "include": [

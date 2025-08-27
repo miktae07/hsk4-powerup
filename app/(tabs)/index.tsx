@@ -1,3 +1,7 @@
+import { DailyGrammarSection } from '@/components/ui/DailyGrammar';
+import hskData from '@assets/meta/hsk.json';
+import Tap from '@components/Tap';
+import Loading from '@components/ui/Loading';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -12,11 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import hskData from '@assets/meta/hsk.json';
-import Tap from '@components/Tap';
-import Loading from '@components/ui/Loading';
-import { DailyGrammarSection } from '@/components/ui/DailyGrammar';
-import { toggleDarkMode, useRefresh, useStore } from '../store';
+import { toggleDarkMode, useRefresh, useStore } from '@/hooks/useStore';
 
 const screenDimensions = Dimensions.get('screen');
 
@@ -194,14 +194,7 @@ const styles = StyleSheet.create({
     marginVertical: screenDimensions.height / 3,
     padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.25)', // Add this line
   },
   modalText: {
     fontSize: 21,

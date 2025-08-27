@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import MultipleChoiceQuiz from '@components/ui/MultipleChoiceQuiz.js';
 import TypingQuiz from '@components/ui/TypingQuiz.js';
-import { useStore } from '@app/store.js';
+import { useStore } from '@/hooks/useStore';
 
 const Quiz = () => {
   const q = useStore(state => state.q);
