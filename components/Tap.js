@@ -1,5 +1,5 @@
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import hanzi from 'hanzi';
 import React from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
