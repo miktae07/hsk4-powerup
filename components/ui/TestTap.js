@@ -1,8 +1,8 @@
 import { View, Text, TextInput, StyleSheet } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { useBearsStore } from '../store.js';
+import { useEffect, useState } from 'react'
+import { useBearsStore } from '@/hooks/useStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-audio';
 import { Pressable } from 'react-native';
 
 export default function TestTap(props) {
@@ -20,14 +20,14 @@ export default function TestTap(props) {
 
         if (m_type === true) {
             const { sound } = await Audio.Sound.createAsync(
-                require('../../../assets/audio/correct.mp3')
+                require('@assets/audio/correct.mp3')
             );
             setSound(sound);
             await sound.playAsync()
         }
         else if (m_type === false) {
             const { sound } = await Audio.Sound.createAsync(
-                require('../../../assets/audio/incorrect.wav')
+                require('@assets/audio/incorrect.wav')
             );
             setSound(sound);
             await sound.playAsync()

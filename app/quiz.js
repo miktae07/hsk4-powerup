@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Alert, TouchableHighlight, TouchableOpacity, Platform, Dimensions } from 'react-native';
-import MultipleChoiceQuiz from './widgets/MultipleChoiceQuiz';
-import TypingQuiz from './widgets/TypingQuiz';
-import { useStore } from './store.js';
+import { useEffect } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import MultipleChoiceQuiz from '@components/ui/MultipleChoiceQuiz.js';
+import TypingQuiz from '@components/ui/TypingQuiz.js';
+import { useStore } from '@/hooks/useStore';
 
 const Quiz = () => {
   const q = useStore(state => state.q);

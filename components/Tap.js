@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native'
-import React from 'react'
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-audio';
 import hanzi from 'hanzi';
+import React from 'react';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const Tap = (props) => {
     const [textHanyuDetail, setTextHanyuDetail] = React.useState(null)
@@ -97,7 +97,7 @@ const Tap = (props) => {
     }, [sound]);
 
     React.useEffect(() => {
-        hanzi.start();
+      //  hanzi.start();
     }, [textStyleIndex])
 
     React.useEffect(() => {
@@ -156,7 +156,7 @@ const Tap = (props) => {
                                     traditional:&nbsp;
                                 </Text>
                                 <Text style={styles.tapHanyu}>
-                                    {Array.from({ length: props.tradional.length }, (_, j) => (
+                                    {props.tradional && Array.from({ length: props.tradional.length }, (_, j) => (
                                         <Text key={j} style={[
                                             styles.tapHanyu,
                                             textStyleIndex1 == j ? styles.tapHanyuHover : null
@@ -176,12 +176,7 @@ const Tap = (props) => {
                     }
                 </View>
                 <TouchableOpacity style={styles.tapPinyin}
-                    onMouseEnter={() => {
-                        playSound()
-                    }}
-                    onPress={() =>
-                        playSound()
-                    }
+                    onPress={() => playSound()}
                 >
                     <Text style={styles.tapPinyinText} >
                         {props.pinyin} &nbsp;

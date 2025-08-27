@@ -2,13 +2,13 @@ import {
   View, ScrollView, Text, Image, StyleSheet,
   Pressable, Modal, Dimensions, Platform, Alert
 } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import hskData from '../../assets/meta/hsk.json';
-import { useStore, useBearsStore } from './store.js';
-import { Audio } from 'expo-av';
-import TestTap from './widgets/TestTap.js';
-import imgsrc from '../../assets/images/finish.png';
-import congrat from '../../assets/images/congrat.png';
+import { useEffect, useState } from 'react'
+import hskData from '@assets/meta/hsk.json';
+import { useStore, useBearsStore } from '@/hooks/useStore';
+import { Audio } from 'expo-audio';
+import TestTap from '@components/ui/TestTap.js';
+import imgsrc from '@assets/images/finish.png';
+import congrat from '@assets/images/congrat.png';
 
 const screenDimensions = Dimensions.get('screen');
 
@@ -27,13 +27,13 @@ const Test = () => {
   async function playSound(m_type) {
     if (m_type === 1) {
       const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/audio/level_complete.mp3')
+        require('@assets/audio/level_complete.mp3')
       );
       await sound.playAsync()
     }
     if (m_type === 0) {
       const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/audio/level_incomplete.mp3')
+        require('@assets/audio/level_incomplete.mp3')
       );
       await sound.playAsync()
     }
