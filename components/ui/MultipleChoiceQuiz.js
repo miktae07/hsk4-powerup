@@ -2,7 +2,7 @@ import { useStore } from '@/hooks/useStore';
 import hskData from '@assets/meta/hsk.json';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { useEffect, useState } from 'react';
 import {
   Dimensions,

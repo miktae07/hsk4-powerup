@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Button, TouchableOpacity, Dimensions } from 'react-native';
 import hskData from '@assets/meta/hsk.json';
 import { useRoute } from '@react-navigation/native';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useStore } from '@/hooks/useStore';
 import { TextInput } from 'react-native-gesture-handler';

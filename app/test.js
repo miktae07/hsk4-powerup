@@ -5,7 +5,7 @@ import {
 import { useEffect, useState } from 'react'
 import hskData from '@assets/meta/hsk.json';
 import { useStore, useBearsStore } from '@/hooks/useStore';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import TestTap from '@components/ui/TestTap.js';
 import imgsrc from '@assets/images/finish.png';
 import congrat from '@assets/images/congrat.png';
