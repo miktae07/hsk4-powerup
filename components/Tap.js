@@ -30,40 +30,44 @@ const Tap = (props) => {
 
     async function playSound() {
 
-        // console.log(setSoundUrl(props.soundUrl)[0]);
-        // console.log('Loading Sound');
+        // Always stop and unload previous sound before playing a new one
+        if (sound) {
+            try {
+                await sound.stopAsync();
+                await sound.unloadAsync();
+            } catch (e) {
+                // ignore errors if sound already stopped/unloaded
+            }
+        }
 
         if (setSoundUrl(props.soundUrl)[1] == '') {
-            const { sound } = await Audio.Sound.createAsync({
+            const { sound: newSound } = await Audio.Sound.createAsync({
                 uri: "https://cdn.yoyochinese.com/audio/pychart/"
                     + props.soundUrl + ".mp3"
             });
-            // console.log("https://cdn.yoyochinese.com/audio/pychart/"
-            // + props.soundUrl + ".mp3");
-            setSound(sound);
-            //   console.log('Playing Sound');
-            await sound.playAsync();
-        }
-        else {
-            const { sound } = await Audio.Sound.createAsync({
+            setSound(newSound);
+            await newSound.playAsync();
+        } else {
+            const { sound: firstSound } = await Audio.Sound.createAsync({
                 uri: "https://cdn.yoyochinese.com/audio/pychart/"
                     + setSoundUrl(props.soundUrl)[0] + ".mp3"
             });
+            setSound(firstSound);
+            await firstSound.playAsync();
 
-            setSound(sound);
-
-            await sound.playAsync().then(
-                setTimeout(async function () {
-                    const { sound } = await Audio.Sound.createAsync({
-                        uri: "https://cdn.yoyochinese.com/audio/pychart/"
-                            + setSoundUrl(props.soundUrl)[1] + ".mp3"
-                    });
-
-                    setSound(sound);
-                    await sound.playAsync()
-
-                }, 600)
-            )
+            setTimeout(async () => {
+                // Stop and unload previous sound before playing the next
+                try {
+                    await firstSound.stopAsync();
+                    await firstSound.unloadAsync();
+                } catch (e) {}
+                const { sound: secondSound } = await Audio.Sound.createAsync({
+                    uri: "https://cdn.yoyochinese.com/audio/pychart/"
+                        + setSoundUrl(props.soundUrl)[1] + ".mp3"
+                });
+                setSound(secondSound);
+                await secondSound.playAsync();
+            }, 600);
         }
     }
 
@@ -97,7 +101,10 @@ const Tap = (props) => {
     }, [sound]);
 
     React.useEffect(() => {
-      //  hanzi.start();
+        // Only call hanzi.start() on native devices (not web)
+        if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+            hanzi.start();
+        }
     }, [textStyleIndex])
 
     React.useEffect(() => {
