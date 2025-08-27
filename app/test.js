@@ -150,6 +150,8 @@ const Test = () => {
 
 const styles = StyleSheet.create({
   score: {
+    marginLeft: 18,
+    color: 'red',
     fontSize: 21,
     fontWeight: 600,
   },
@@ -162,7 +164,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 16,
     borderRadius: 4,
     elevation: 3,
     backgroundColor: 'blue',
