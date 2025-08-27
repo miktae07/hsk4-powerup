@@ -1,7 +1,22 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, SafeAreaView, StyleSheet } from 'react-native';
-import { toggleDarkMode, useRefresh, useStore } from './store';
-// const hskData = require("../../assets/meta/hsk.json");
+import {
+  Button,
+  Dimensions,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import hskData from '@assets/meta/hsk.json';
+import Tap from '@components/Tap';
+import Loading from '@components/ui/Loading';
+import { DailyGrammarSection } from '@/components/ui/DailyGrammar';
+import { toggleDarkMode, useRefresh, useStore } from '../store';
 
 const screenDimensions = Dimensions.get('screen');
 
@@ -16,6 +31,8 @@ type WordCounts = {
 };
 
 export default function HomeScreen({ navigation }: HomeProps) {
+  const router = useRouter();
+
   console.log('HomeScreen rendered');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -68,7 +85,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
 
   const generateRandomNumbers = () => {
     const numbers: number[] = [];
-    for (let i = 0; i <= 3; i++) {
+    for (let i = 0; i < 3; i++) {
       let n = Math.floor(Math.random() * 601);
       numbers.push(n);
     }
@@ -79,17 +96,15 @@ export default function HomeScreen({ navigation }: HomeProps) {
   };
 
   const handlePress = () => {
-    console.log('handlePress: navigating to Questions with randomNumbers', randomNumbers);
-    navigation.navigate('Questions', { randomNumbers });
+    router.push({ pathname: '/quiz', params: { randomNumbers } });
   };
 
   const backgroundColor = isDarkMode ? '#121212' : '#f0f2f5';
   const color = isDarkMode ? '#fff' : '#000';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      
-      {/* {isLoading ? (
+    <SafeAreaView style={[styles.container, { backgroundColor }]}> 
+      {isLoading ? (
         <Loading />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
@@ -105,16 +120,16 @@ export default function HomeScreen({ navigation }: HomeProps) {
                   style={styles.btnOpen}
                   onPress={() => {
                     setShowReminder(!showReminder);
-                    navigation.navigate('Test');
+                    router.push('/test');
                   }}
                 >
                   <Text style={styles.text}>OK</Text>
                 </Pressable>
                 <Pressable
                   style={styles.btnClose}
-                  onPress={() => setShowReminder(!showReminder)}
+                  onPress={() => setShowReminder(false)}
                 >
-                  <Text style={styles.text}>Close</Text>
+                  <Text style={styles.text}>Cancel</Text>
                 </Pressable>
               </View>
             </View>
@@ -124,7 +139,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
               <Tap
                 key={index}
                 simplified={hskData.words[number]['translation-data'].simplified}
-                tradional={hskData.words[number]['translation-data'].traditional}
+                traditional={hskData.words[number]['translation-data'].traditional}
                 pinyin={hskData.words[number]['translation-data'].pinyin}
                 soundUrl={hskData.words[number]['translation-data']['pinyin-numbered']}
                 meaning={hskData.words[number]['translation-data'].english}
@@ -133,14 +148,15 @@ export default function HomeScreen({ navigation }: HomeProps) {
               />
             ))}
           </View>
+          <DailyGrammarSection />
           <View style={styles.buttonContainer}>
             <View style={styles.button}>
               <Button title="Questions" onPress={handlePress} />
             </View>
           </View>
-          <StatusBar style="auto" />
+          <StatusBar />
         </ScrollView>
-      )} */}
+      )}
     </SafeAreaView>
   );
 }

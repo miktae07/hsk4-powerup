@@ -22,9 +22,9 @@ export const useStore = create(
             pushToArray: (r) => {
                 if (r && r[0]) {
                     set((state) => ({ wArray: [...state.wArray, r[0], r[1], r[2], r[3], r[4]] }))
-                    //   console.log(get());
-                    // console.log(r);
-                    // console.log(r[0]);
+                   // console.log(get());
+                    console.log(r);
+                   // console.log(r[0]);
                 }
             },
         }),

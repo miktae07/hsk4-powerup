@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet, View, Text,
-  TouchableHighlight, TouchableOpacity,
-  Dimensions
-} from 'react-native';
-import hskData from '../../../assets/meta/hsk.json';
+import { useStore } from '@app/store';
+import hskData from '@assets/meta/hsk.json';
+import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
-import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store.js';
+import { useEffect, useState } from 'react';
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableHighlight, TouchableOpacity,
+  View
+} from 'react-native';
 const screenDimensions = Dimensions.get('screen');
 
 const MultipleChoiceQuiz = () => {
@@ -20,7 +22,9 @@ const MultipleChoiceQuiz = () => {
   const increaseQ = useStore(state => state.increaseQ);
   const updateScore = useStore(state => state.updateScore);
 
-  const { randomNumbers } = route.params;
+  // Fallback for randomNumbers if route.params is undefined
+  const randomNumbers = route.params && route.params.randomNumbers ? route.params.randomNumbers : [];
+  console.log(randomNumbers);
   // const randomNumbers = [2, 1, 3, 6, 9];
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -43,6 +47,10 @@ const MultipleChoiceQuiz = () => {
   }, [stateKey])
 
   const fetchData = (indexNumber) => {
+    if (!randomNumbers || !Array.isArray(randomNumbers) || randomNumbers[indexNumber] === undefined) {
+      setQuestions(null);
+      return;
+    }
     const word = hskData.words[randomNumbers[indexNumber]]['translation-data'];
     const answers = Array.from({ length: 5 }, () => {
       const randomNumber = generateUniqueNumber();
@@ -72,14 +80,14 @@ const MultipleChoiceQuiz = () => {
 
     if (m_type === true) {
       const { sound } = await Audio.Sound.createAsync(
-        require('../../../assets/audio/correct.mp3')
+        require('@assets/audio/correct.mp3')
       );
       setSound(sound);
       await sound.playAsync()
     }
     else if (m_type === false) {
       const { sound } = await Audio.Sound.createAsync(
-        require('../../../assets/audio/incorrect.wav')
+        require('@assets/audio/incorrect.wav')
       );
       setSound(sound);
       await sound.playAsync()
@@ -120,37 +128,33 @@ const MultipleChoiceQuiz = () => {
   }
 
   const playPinyinSound = async () => {
-    if (setSoundUrl(hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'])[1] == '') {
+    // Safety checks for randomNumbers and hskData
+    if (!randomNumbers || !Array.isArray(randomNumbers)) return;
+    const idx = randomNumbers[Math.floor(q / 2)];
+    if (idx === undefined) return;
+    const wordData = hskData.words && hskData.words[idx] && hskData.words[idx]['translation-data'];
+    if (!wordData || !wordData['pinyin-numbered']) return;
+    const pinyinNumbered = wordData['pinyin-numbered'];
+    const soundUrlArr = setSoundUrl(pinyinNumbered);
+    if (soundUrlArr[1] === '') {
       const { sound } = await Audio.Sound.createAsync({
-        uri: "https://cdn.yoyochinese.com/audio/pychart/"
-          + hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'] + ".mp3"
+        uri: "https://cdn.yoyochinese.com/audio/pychart/" + pinyinNumbered + ".mp3"
       });
-      // console.log("https://cdn.yoyochinese.com/audio/pychart/"
-      // + props.soundUrl + ".mp3");
       setSound(sound);
-      //   console.log('Playing Sound');
       await sound.playAsync();
-    }
-    else {
+    } else {
       const { sound } = await Audio.Sound.createAsync({
-        uri: "https://cdn.yoyochinese.com/audio/pychart/"
-          + setSoundUrl(hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'])[0] + ".mp3"
+        uri: "https://cdn.yoyochinese.com/audio/pychart/" + soundUrlArr[0] + ".mp3"
       });
-
       setSound(sound);
-
-      await sound.playAsync().then(
-        setTimeout(async function () {
-          const { sound } = await Audio.Sound.createAsync({
-            uri: "https://cdn.yoyochinese.com/audio/pychart/"
-              + setSoundUrl(hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'])[1] + ".mp3"
-          });
-
-          setSound(sound);
-          await sound.playAsync()
-
-        }, 600)
-      )
+      await sound.playAsync();
+      setTimeout(async function () {
+        const { sound: sound2 } = await Audio.Sound.createAsync({
+          uri: "https://cdn.yoyochinese.com/audio/pychart/" + soundUrlArr[1] + ".mp3"
+        });
+        setSound(sound2);
+        await sound2.playAsync();
+      }, 600);
     }
   }
 

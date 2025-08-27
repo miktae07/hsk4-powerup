@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Button, TouchableOpacity, Dimensions } from 'react-native';
-import hskData from '../../../assets/meta/hsk.json';
+import hskData from '@assets/meta/hsk.json';
 import { useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useStore } from '../store.js';
+import { useStore } from '@app/store';
 import { TextInput } from 'react-native-gesture-handler';
 const screenDimensions = Dimensions.get('screen');
 
@@ -40,14 +40,14 @@ const TypingQuiz = () => {
 
         if (m_type === true) {
             const { sound } = await Audio.Sound.createAsync(
-                require('../../../assets/audio/correct.mp3')
+                require('@assets/audio/correct.mp3')
             );
             setSound(sound);
             await sound.playAsync()
         }
         else if (m_type === false) {
             const { sound } = await Audio.Sound.createAsync(
-                require('../../../assets/audio/incorrect.wav')
+                require('@assets/audio/incorrect.wav')
             );
             setSound(sound);
             await sound.playAsync()
