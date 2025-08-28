@@ -25,6 +25,7 @@ const Quiz = () => {
 
   return (
     <View>
+    <Text>Question {q + 1} / 10</Text>
       {
         q % 2 == 0 ?
           <MultipleChoiceQuiz />

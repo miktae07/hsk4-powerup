@@ -206,10 +206,9 @@ const Tap = (props) => {
                                 {textHanyuDetail}
                             </Text>
                         </TouchableOpacity>
-                        <View style={styles.tapPinyinText} >
-                            {
-                                hanzi.getPinyin(textHanyuDetail)[0] == hanzi.getPinyin(textHanyuDetail)[1]
-                                    ?
+                        <View style={styles.tapPinyinText}>
+                            {(typeof navigator !== 'undefined' && navigator.product === 'ReactNative' && typeof hanzi.getPinyin === 'function') ? (
+                                hanzi.getPinyin(textHanyuDetail)[0] === hanzi.getPinyin(textHanyuDetail)[1] ? (
                                     <Pressable onPress={() => {
                                         playPinyinSound(hanzi.getPinyin(textHanyuDetail)[0])
                                     }}
@@ -217,37 +216,37 @@ const Tap = (props) => {
                                         <Text>{hanzi.getPinyin(textHanyuDetail)[0]}</Text>
                                         <Ionicons name="volume-high" size={23} color="black" />
                                     </Pressable>
-                                    :
+                                ) : (
                                     <View>
-                                        {
-                                            hanzi.getPinyin(textHanyuDetail)[0].charAt(0)
-                                                != hanzi.getPinyin(textHanyuDetail)[0].charAt(0).toUpperCase()
-                                                ?
-                                                <Pressable onPress={() => {
-                                                    playPinyinSound(hanzi.getPinyin(textHanyuDetail)[0])
-                                                }}
-                                                    style={[styles.tapRow, { justifyContent: 'center' }]}><Text>{hanzi.getPinyin(textHanyuDetail)[0]}</Text>
-                                                    <Ionicons name="volume-high" size={23} color="black" />
-                                                </Pressable> : null
-                                        }
+                                        {hanzi.getPinyin(textHanyuDetail)[0].charAt(0) !== hanzi.getPinyin(textHanyuDetail)[0].charAt(0).toUpperCase() ? (
+                                            <Pressable onPress={() => {
+                                                playPinyinSound(hanzi.getPinyin(textHanyuDetail)[0])
+                                            }}
+                                                style={[styles.tapRow, { justifyContent: 'center' }]}>
+                                                <Text>{hanzi.getPinyin(textHanyuDetail)[0]}</Text>
+                                                <Ionicons name="volume-high" size={23} color="black" />
+                                            </Pressable>
+                                        ) : null}
                                         <Pressable onPress={() => {
                                             playPinyinSound(hanzi.getPinyin(textHanyuDetail)[1])
                                         }}
-                                            style={[styles.tapRow, { justifyContent: 'center' }]}><Text>
-                                                {hanzi.getPinyin(textHanyuDetail)[1]}
-                                            </Text>
+                                            style={[styles.tapRow, { justifyContent: 'center' }]}>
+                                            <Text>{hanzi.getPinyin(textHanyuDetail)[1]}</Text>
                                             <Ionicons name="volume-high" size={23} color="black" />
                                         </Pressable>
                                     </View>
-                            }
+                                )
+                            ) : (
+                                <Text>{/* fallback for web or if hanzi.getPinyin is not available */}</Text>
+                            )}
                         </View>
                         <View style={styles.triangle} />
                         <Text style={styles.tapPinyinText}>
-                            {textHanyuDetail && hanzi.definitionLookup(textHanyuDetail).map((w, i) => {
-                                return (i == 0 ? <Text key={i}>
-                                    {w.definition.split('/').slice(0, 3).join('/')}
-                                </Text> : null)
-                            })}
+                            {(typeof navigator !== 'undefined' && navigator.product === 'ReactNative' && typeof hanzi.definitionLookup === 'function') && textHanyuDetail
+                                ? hanzi.definitionLookup(textHanyuDetail).map((w, i) => (
+                                    i === 0 ? <Text key={i}>{w.definition.split('/').slice(0, 3).join('/')}</Text> : null
+                                ))
+                                : null}
                         </Text>
                     </View> : null
             }

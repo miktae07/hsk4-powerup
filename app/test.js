@@ -5,7 +5,7 @@ import {
 import { useEffect, useState } from 'react'
 import hskData from '@assets/meta/hsk.json';
 import { useStore, useBearsStore } from '@/hooks/useStore';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import TestTap from '@components/ui/TestTap.js';
 import imgsrc from '@assets/images/finish.png';
 import congrat from '@assets/images/congrat.png';
@@ -150,6 +150,8 @@ const Test = () => {
 
 const styles = StyleSheet.create({
   score: {
+    marginLeft: 18,
+    color: 'red',
     fontSize: 21,
     fontWeight: 600,
   },
@@ -162,7 +164,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 16,
     borderRadius: 4,
     elevation: 3,
     backgroundColor: 'blue',

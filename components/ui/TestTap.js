@@ -2,7 +2,7 @@ import { View, Text, TextInput, StyleSheet } from 'react-native'
 import { useEffect, useState } from 'react'
 import { useBearsStore } from '@/hooks/useStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { Pressable } from 'react-native';
 
 export default function TestTap(props) {
