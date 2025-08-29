@@ -1,5 +1,6 @@
 import { DailyGrammarSection } from '@/components/ui/DailyGrammar';
-import hskData from '@assets/meta/hsk.json';
+import { toggleDarkMode, useRefresh, useStore } from '@/hooks/useStore';
+import hskData from '@assets/meta/hsk4.json';
 import Tap from '@components/Tap';
 import Loading from '@components/ui/Loading';
 import { useRouter } from 'expo-router';
@@ -16,7 +17,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { toggleDarkMode, useRefresh, useStore } from '@/hooks/useStore';
 
 const screenDimensions = Dimensions.get('screen');
 
@@ -85,12 +85,11 @@ export default function HomeScreen({ navigation }: HomeProps) {
 
   const generateRandomNumbers = () => {
     const numbers: number[] = [];
-    for (let i = 0; i < 3; i++) {
-      let n = Math.floor(Math.random() * 601);
+    const max = hskData.length;
+    for (let i = 0; i < 4; i++) {
+      let n = Math.floor(Math.random() * max);
       numbers.push(n);
     }
-    let n = Math.floor(Math.random() * 601) + 600;
-    numbers.push(n);
     console.log('Generated random numbers:', numbers);
     setRandomNumbers(numbers);
   };
@@ -135,18 +134,22 @@ export default function HomeScreen({ navigation }: HomeProps) {
             </View>
           </Modal>
           <View style={styles.content}>
-            {randomNumbers.map((number, index) => (
-              <Tap
-                key={index}
-                simplified={hskData.words[number]['translation-data'].simplified}
-                traditional={hskData.words[number]['translation-data'].traditional}
-                pinyin={hskData.words[number]['translation-data'].pinyin}
-                soundUrl={hskData.words[number]['translation-data']['pinyin-numbered']}
-                meaning={hskData.words[number]['translation-data'].english}
-                index={number}
-                count={wordCounts[number]}
-              />
-            ))}
+            {randomNumbers.map((number, index) => {
+              const word = hskData[number];
+              if (!word) return null; // Prevent crash if out of bounds
+              return (
+                <Tap
+                  key={index}
+                  simplified={word['translation-data'].simplified}
+                  traditional={word['translation-data'].traditional}
+                  pinyin={word['translation-data'].pinyin}
+                  soundUrl={word['translation-data']['pinyin-numbered']}
+                  meaning={word['translation-data'].english}
+                  index={number}
+                  count={wordCounts[number]}
+                />
+              );
+            })}
           </View>
           <DailyGrammarSection />
           <View style={styles.buttonContainer}>

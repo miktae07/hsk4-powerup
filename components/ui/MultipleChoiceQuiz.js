@@ -1,5 +1,5 @@
 import { useStore } from '@/hooks/useStore';
-import hskData from '@assets/meta/hsk.json';
+import hskData from '@assets/meta/hsk4.json';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
@@ -22,10 +22,11 @@ const MultipleChoiceQuiz = () => {
   const increaseQ = useStore(state => state.increaseQ);
   const updateScore = useStore(state => state.updateScore);
 
-  // Fallback for randomNumbers if route.params is undefined
-  const randomNumbers = route.params && route.params.randomNumbers ? route.params.randomNumbers : [];
-  console.log(randomNumbers);
-  // const randomNumbers = [2, 1, 3, 6, 9];
+  // Parse randomNumbers from URL parameters
+  const randomNumbers = route.params?.randomNumbers 
+    ? route.params.randomNumbers.split(',').map(num => parseInt(num.trim()))
+    : [];
+  console.log('Parsed randomNumbers:', randomNumbers);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [index, setIndex] = useState(0);
@@ -47,16 +48,72 @@ const MultipleChoiceQuiz = () => {
   }, [stateKey])
 
   const fetchData = (indexNumber) => {
-    if (!randomNumbers || !Array.isArray(randomNumbers) || randomNumbers[indexNumber] === undefined) {
+    console.log('fetchData called with indexNumber:', indexNumber);
+    
+    // Validate input parameters
+    if (!Array.isArray(randomNumbers) || randomNumbers.length < 4 || indexNumber >= randomNumbers.length) {
+      // Handle error: not enough data
       setQuestions(null);
       return;
     }
-    const word = hskData.words[randomNumbers[indexNumber]]['translation-data'];
-    const answers = Array.from({ length: 5 }, () => {
-      const randomNumber = generateUniqueNumber();
-      return hskData.words[randomNumbers[randomNumber]]['translation-data'].english;
-    });
+    for (let i = 0; i < 4; i++) {
+      if (typeof randomNumbers[i] !== 'number' || isNaN(randomNumbers[i])) {
+        // Handle error: invalid index
+        setQuestions(null);
+        return;
+      }
+      // Now it's safe to use randomNumbers[i]
+    }
+
+    const correctIdx = randomNumbers[indexNumber];
+    
+    // Validate the word exists in hskData
+    if (!hskData[correctIdx] || !hskData[correctIdx]['translation-data']) {
+      console.log('Word data not found for index:', correctIdx);
+      setQuestions(null);
+      return;
+    }
+
+    const word = hskData[correctIdx]['translation-data'];
+    console.log('Selected word:', word);
+
+    // Pick 4 unique random indices from hskData, not including the correct answer
+    const usedIndices = new Set([correctIdx]);
+    const validIndices = [];
+    
+    // Pre-filter valid indices
+    for (let i = 0; i < hskData.length; i++) {
+      if (i !== correctIdx && 
+          hskData[i] && 
+          hskData[i]['translation-data'] && 
+          hskData[i]['translation-data'].english) {
+        validIndices.push(i);
+      }
+    }
+
+    // Randomly select 4 indices
+    const answerIndices = [];
+    while (answerIndices.length < 4 && validIndices.length > 0) {
+      const randIndex = Math.floor(Math.random() * validIndices.length);
+      const selectedIndex = validIndices[randIndex];
+      validIndices.splice(randIndex, 1);
+      answerIndices.push(selectedIndex);
+    }
+
+    // Collect the 4 random answers + the correct answer, then shuffle
+    const answers = [
+      word.english,
+      ...answerIndices.map(idx => hskData[idx]['translation-data'].english)
+    ].sort(() => Math.random() - 0.5);
+
     setQuestions({
+      question: word.simplified,
+      pinyin: word.pinyin,
+      answers,
+      correctAnswer: word.english,
+    });
+
+    console.log('Questions state set:', {
       question: word.simplified,
       pinyin: word.pinyin,
       answers,
@@ -95,19 +152,37 @@ const MultipleChoiceQuiz = () => {
   }
 
   useEffect(() => {
-    setIndex(Math.floor(q / 2))
-  }, [q])
+    const newIndex = Math.floor(q / 2);
+    if (newIndex < randomNumbers.length) {
+      setIndex(newIndex);
+    }
+  }, [q, randomNumbers]);
 
   useEffect(() => {
     // console.log(screenDimensions);
-    increaseN()
+    increaseN();
   }, []);
 
   useEffect(() => {
-   /*  console.log('index = ', index); */
+    console.log('index = ', index);
     fetchData(index);
-    playPinyinSound()
   }, [index]);
+
+  // Separate effect for sound to handle user interaction requirement
+  useEffect(() => {
+    const playSound = async () => {
+      try {
+        if (questions && questions.pinyin) {
+          await playPinyinSound();
+        }
+      } catch (error) {
+        console.log('Sound playback error:', error);
+        // Don't throw the error - just log it
+      }
+    };
+    
+    playSound();
+  }, [questions]);
 
 
   function setSoundUrl(url) {
@@ -128,33 +203,53 @@ const MultipleChoiceQuiz = () => {
   }
 
   const playPinyinSound = async () => {
-    // Safety checks for randomNumbers and hskData
-    if (!randomNumbers || !Array.isArray(randomNumbers)) return;
-    const idx = randomNumbers[Math.floor(q / 2)];
-    if (idx === undefined) return;
-    const wordData = hskData.words && hskData.words[idx] && hskData.words[idx]['translation-data'];
-    if (!wordData || !wordData['pinyin-numbered']) return;
-    const pinyinNumbered = wordData['pinyin-numbered'];
-    const soundUrlArr = setSoundUrl(pinyinNumbered);
-    if (soundUrlArr[1] === '') {
-      const { sound } = await Audio.Sound.createAsync({
-        uri: "https://cdn.yoyochinese.com/audio/pychart/" + pinyinNumbered + ".mp3"
-      });
-      setSound(sound);
-      await sound.playAsync();
-    } else {
-      const { sound } = await Audio.Sound.createAsync({
-        uri: "https://cdn.yoyochinese.com/audio/pychart/" + soundUrlArr[0] + ".mp3"
-      });
-      setSound(sound);
-      await sound.playAsync();
-      setTimeout(async function () {
-        const { sound: sound2 } = await Audio.Sound.createAsync({
-          uri: "https://cdn.yoyochinese.com/audio/pychart/" + soundUrlArr[1] + ".mp3"
-        });
-        setSound(sound2);
-        await sound2.playAsync();
-      }, 600);
+    try {
+      // Use current questions state instead of recalculating from randomNumbers
+      if (!questions || !questions.pinyin) return;
+      
+      const currentWord = hskData[randomNumbers[index]];
+      // if (!currentWord || !currentWord['translation-data'] || !currentWord['translation-data']['pinyin-numbered']) {
+      //   console.log('No pinyin data available for current word');
+      //   return;
+      // }
+
+      const pinyinNumbered = currentWord['translation-data']['pinyin-numbered'];
+      const soundUrlArr = setSoundUrl(pinyinNumbered);
+
+      // Clean up previous sound if it exists
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      if (soundUrlArr[1] === '') {
+        const { sound: newSound } = await Audio.Sound.createAsync({
+          uri: "https://cdn.yoyochinese.com/audio/pychart/" + pinyinNumbered + ".mp3"
+        }, { shouldPlay: false }); // Don't auto-play
+        setSound(newSound);
+        await newSound.playAsync();
+      } else {
+        const { sound: firstSound } = await Audio.Sound.createAsync({
+          uri: "https://cdn.yoyochinese.com/audio/pychart/" + soundUrlArr[0] + ".mp3"
+        }, { shouldPlay: false }); // Don't auto-play
+        setSound(firstSound);
+        
+        try {
+          await firstSound.playAsync();
+          await new Promise(resolve => setTimeout(resolve, 600));
+          
+          const { sound: secondSound } = await Audio.Sound.createAsync({
+            uri: "https://cdn.yoyochinese.com/audio/pychart/" + soundUrlArr[1] + ".mp3"
+          }, { shouldPlay: false }); // Don't auto-play
+          
+          await firstSound.unloadAsync(); // Clean up first sound
+          setSound(secondSound);
+          await secondSound.playAsync();
+        } catch (error) {
+          console.log('Error playing sound sequence:', error);
+        }
+      }
+    } catch (error) {
+      console.log('Error in playPinyinSound:', error);
     }
   }
 
