@@ -3,7 +3,7 @@ import {
   Pressable, Modal, Dimensions, Platform, Alert
 } from 'react-native'
 import { useEffect, useState } from 'react'
-import hskData from '@assets/meta/hsk.json';
+import hskData from '@assets/meta/hsk4.json';
 import { useStore, useBearsStore } from '@/hooks/useStore';
 import { Audio } from 'expo-av';
 import TestTap from '@components/ui/TestTap.js';
