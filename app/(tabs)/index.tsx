@@ -1,6 +1,7 @@
 import { DailyGrammarSection } from '@/components/ui/DailyGrammar';
 import { toggleDarkMode, useRefresh, useStore } from '@/hooks/useStore';
 import hskData from '@assets/meta/hsk4.json';
+import data from '@assets/meta/hsk4_grammar.json';
 import Tap from '@components/Tap';
 import Loading from '@components/ui/Loading';
 import { useRouter } from 'expo-router';
@@ -40,14 +41,29 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const [showReminder, setShowReminder] = useState<boolean>(false);
   const [wordCounts, setWordCounts] = useState<WordCounts>({});
 
-  const n = useStore(state => state.n);
-  const removeN = useStore(state => state.removeN);
-  const refresh = useRefresh(state => state.refresh);
-  const updateT = useStore(state => state.updateT);
-  const addWords = useStore(state => state.pushToArray);
-  const clearQ = useStore(state => state.clearQ);
-  const killScore = useStore(state => state.killScore);
-  const isDarkMode = toggleDarkMode(state => state.isDarkMode);
+  const n = useStore((state: any) => state.n);
+  const removeN = useStore((state: any) => state.removeN);
+  const refresh = useRefresh((state: any) => state.refresh);
+  const updateT = useStore((state: any) => state.updateT);
+  const addWords = useStore((state: any) => state.pushToArray);
+  const clearQ = useStore((state: any) => state.clearQ);
+  const killScore = useStore((state: any) => state.killScore);
+  const isDarkMode = toggleDarkMode((state: any) => state.isDarkMode);
+
+  const getDayOfYear = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = (now as any) - (start as any);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const day = Math.floor(diff / oneDay);
+    console.info("Day is ", day);
+    return day;
+  };
+
+  const dayOfYear = getDayOfYear();
+  const totalLessons = data.lessons.length;
+  const lessonId = (dayOfYear % totalLessons) + 1;
+  console.log("lessonId: ", lessonId)
 
   useEffect(() => {
     console.log('useEffect [] ran');
@@ -93,6 +109,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
     console.log('Generated random numbers:', numbers);
     setRandomNumbers(numbers);
   };
+
 
   const handlePress = () => {
     router.push({ pathname: '/quiz', params: { randomNumbers } });
@@ -151,7 +168,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
               );
             })}
           </View>
-          <DailyGrammarSection />
+          <DailyGrammarSection lessonId={lessonId} />
           <View style={styles.buttonContainer}>
             <View style={styles.button}>
               <Button title="Questions" onPress={handlePress} />

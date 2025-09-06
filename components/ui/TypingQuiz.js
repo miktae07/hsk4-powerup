@@ -140,7 +140,7 @@ const TypingQuiz = () => {
     }, [index]);
 
     useEffect(() => {
-        console.log(text);
+        // console.log(text);
         if (text == questions.question) {
             setText('')
             setPlaceholder('Type your answer')
