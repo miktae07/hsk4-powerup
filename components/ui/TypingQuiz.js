@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Button, TouchableOpacity, Dimensions } from 'react-native';
-import hskData from '@assets/meta/hsk.json';
+import hskData from '@assets/meta/hsk4.json';
 import { useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -16,8 +16,10 @@ const TypingQuiz = () => {
     const n = useStore(state => state.n);
     const q = useStore(state => state.q);
     const score = useStore(state => state.score);
-    const { randomNumbers } = route.params;
-    // const randomNumbers = [2, 1, 3, 6, 9];
+    const randomNumbers = route.params?.randomNumbers ? 
+        (typeof route.params.randomNumbers === 'string' ? 
+            route.params.randomNumbers.split(',').map(n => parseInt(n.trim())) : 
+            route.params.randomNumbers) : [];
 
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [index, setIndex] = useState(0);
@@ -27,7 +29,18 @@ const TypingQuiz = () => {
     const [text, setText] = useState('');
 
     const fetchData = (indexNumber) => {
-        const word = hskData.words[randomNumbers[indexNumber]]['translation-data'];
+        if (!Array.isArray(randomNumbers) || indexNumber >= randomNumbers.length) {
+            console.log('Invalid index or randomNumbers:', indexNumber, randomNumbers);
+            return;
+        }
+
+        const wordIndex = randomNumbers[indexNumber];
+        if (!hskData[wordIndex] || !hskData[wordIndex]['translation-data']) {
+            console.log('Word data not found for index:', wordIndex);
+            return;
+        }
+
+        const word = hskData[wordIndex]['translation-data'];
         setQuestions({
             question: word.simplified,
             pinyin: word.pinyin,
@@ -36,40 +49,98 @@ const TypingQuiz = () => {
     };
 
     async function playSound(m_type) {
-        // console.log('Loading Sound');
+        try {
+            // Unload previous sound if exists
+            if (sound) {
+                await sound.unloadAsync();
+                setSound(null);
+            }
 
-        if (m_type === true) {
-            const { sound } = await Audio.Sound.createAsync(
-                require('@assets/audio/correct.mp3')
+            const audioFile = m_type === true ? 
+                require('@assets/audio/correct.mp3') : 
+                require('@assets/audio/incorrect.wav');
+
+            const { sound: newSound } = await Audio.Sound.createAsync(
+                audioFile,
+                { shouldPlay: true }
             );
-            setSound(sound);
-            await sound.playAsync()
-        }
-        else if (m_type === false) {
-            const { sound } = await Audio.Sound.createAsync(
-                require('@assets/audio/incorrect.wav')
-            );
-            setSound(sound);
-            await sound.playAsync()
+            setSound(newSound);
+
+            // Add error handler for playback completion
+            newSound.setOnPlaybackStatusUpdate(async (status) => {
+                if (status.didJustFinish) {
+                    try {
+                        await newSound.unloadAsync();
+                    } catch (error) {
+                        console.log('Error unloading sound:', error);
+                    }
+                }
+            });
+        } catch (error) {
+            console.log('Error playing sound:', error);
+            if (sound) {
+                try {
+                    await sound.unloadAsync();
+                    setSound(null);
+                } catch (cleanupError) {
+                    console.log('Error cleaning up sound after error:', cleanupError);
+                }
+            }
         }
     }
 
+    // Initialize audio
     useEffect(() => {
-        setIndex(Math.floor(q / 2))
-    }, [q])
-
-    useEffect(() => {
-        setText('')
-        increaseN()
+        const initAudio = async () => {
+            try {
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: false,
+                    playsInSilentModeIOS: true,
+                    shouldDuckAndroid: true,
+                    staysActiveInBackground: false,
+                    playThroughEarpieceAndroid: false,
+                    interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+                    interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX
+                });
+            } catch (error) {
+                console.log('Error initializing audio:', error);
+            }
+        };
+        
+        initAudio();
+        
+        // Clean up sound when component unmounts
+        return () => {
+            if (sound) {
+                sound.unloadAsync().catch(error => {
+                    console.log('Error cleaning up sound:', error);
+                });
+            }
+        };
     }, []);
 
     useEffect(() => {
-        setTimeout(playPinyinSound(), 300);
-        fetchData(index);
+        const newIndex = Math.floor(q / 2);
+        if (newIndex < (randomNumbers?.length || 0)) {
+            setIndex(newIndex);
+        }
+    }, [q, randomNumbers]);
+
+    useEffect(() => {
+        setText('');
+        increaseN();
+    }, []);
+
+    useEffect(() => {
+        if (index >= 0) {
+            fetchData(index);
+            // Let's not auto-play sound on index change
+            // User needs to click the sound button instead
+        }
     }, [index]);
 
     useEffect(() => {
-        console.log(text);
+        // console.log(text);
         if (text == questions.question) {
             setText('')
             setPlaceholder('Type your answer')
@@ -81,55 +152,114 @@ const TypingQuiz = () => {
         }
     }, [text]);
 
-    function setSoundUrl(url) {
-        const soundUrlArr = [];
-        const match = url.match(/^([a-zA-Z]+)(\d.*)/);
-
-        if (match) {
-            const firstPart = match[1] + match[2].match(/^\d+/)[0];
-            const secondPart = match[2].replace(/^\d+/, '');
-            soundUrlArr.push(firstPart);
-            soundUrlArr.push(secondPart);
-
-            //   console.log(firstPart, secondPart);
-        } else {
-            console.log('Invalid string');
+    function parsePinyinSyllables(pinyin) {
+        // Remove spaces and split into syllables
+        const cleanPinyin = pinyin.trim().replace(/\s+/g, '');
+        const syllables = [];
+        let currentSyllable = '';
+        
+        for (let i = 0; i < cleanPinyin.length; i++) {
+            const char = cleanPinyin[i];
+            if (/[0-9]/.test(char)) {
+                // When we hit a number, complete the current syllable
+                currentSyllable += char;
+                syllables.push(currentSyllable);
+                currentSyllable = '';
+            } else {
+                currentSyllable += char;
+            }
         }
-        return soundUrlArr;
+        
+        return syllables;
     }
 
     const playPinyinSound = async () => {
-        if (setSoundUrl(hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'])[1] == '') {
-            const { sound } = await Audio.Sound.createAsync({
-                uri: "https://cdn.yoyochinese.com/audio/pychart/"
-                    + hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'] + ".mp3"
-            });
-            // console.log("https://cdn.yoyochinese.com/audio/pychart/"
-            // + props.soundUrl + ".mp3");
-            setSound(sound);
-            //   console.log('Playing Sound');
-            await sound.playAsync();
-        }
-        else {
-            const { sound } = await Audio.Sound.createAsync({
-                uri: "https://cdn.yoyochinese.com/audio/pychart/"
-                    + setSoundUrl(hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'])[0] + ".mp3"
-            });
+        try {
+            // Input validation
+            if (!Array.isArray(randomNumbers) || !hskData) {
+                console.error('Missing data:', { randomNumbers, hskData: !!hskData });
+                return;
+            }
+            
+            const currentIndex = Math.floor(q / 2);
+            if (currentIndex >= randomNumbers.length) {
+                console.error('Index out of bounds:', currentIndex, randomNumbers.length);
+                return;
+            }
+            
+            const wordIndex = randomNumbers[currentIndex];
+            if (!hskData[wordIndex]) {
+                console.error('No word data for index:', wordIndex);
+                return;
+            }
 
-            setSound(sound);
+            const wordData = hskData[wordIndex]['translation-data'];
+            if (!wordData || !wordData['pinyin-numbered']) {
+                console.error('Missing pinyin data:', wordData);
+                return;
+            }
+            
+            // Clean up any previous sound
+            if (sound) {
+                try {
+                    await sound.unloadAsync();
+                    setSound(null);
+                } catch (cleanupError) {
+                    console.error('Error cleaning up previous sound:', cleanupError);
+                }
+            }
 
-            await sound.playAsync().then(
-                setTimeout(async function () {
-                    const { sound } = await Audio.Sound.createAsync({
-                        uri: "https://cdn.yoyochinese.com/audio/pychart/"
-                            + setSoundUrl(hskData.words[randomNumbers[Math.floor(q / 2)]]['translation-data']['pinyin-numbered'])[1] + ".mp3"
+            const pinyinNumbered = wordData['pinyin-numbered'];
+            console.log('Playing pinyin:', pinyinNumbered);
+            
+            const syllables = parsePinyinSyllables(pinyinNumbered);
+            
+            // Play each syllable in sequence
+            for (let i = 0; i < syllables.length; i++) {
+                const syllable = syllables[i];
+                const url = `https://cdn.yoyochinese.com/audio/pychart/${syllable.toLowerCase()}.mp3`;
+                
+                try {
+                    const { sound: newSound } = await Audio.Sound.createAsync(
+                        { uri: url },
+                        { shouldPlay: true }
+                    );
+                    setSound(newSound);
+                    
+                    // Wait for the sound to finish
+                    await new Promise((resolve, reject) => {
+                        newSound.setOnPlaybackStatusUpdate(status => {
+                            if (status.didJustFinish) {
+                                resolve();
+                            } else if (status.error) {
+                                reject(new Error('Sound playback error: ' + status.error));
+                            }
+                        });
                     });
-
-                    setSound(sound);
-                    await sound.playAsync()
-
-                }, 600)
-            )
+                    
+                    // Clean up after each syllable
+                    await newSound.unloadAsync();
+                    setSound(null);
+                    
+                    // Small pause between syllables
+                    if (i < syllables.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                } catch (syllableError) {
+                    console.error('Error playing syllable ' + syllable + ':', syllableError);
+                }
+            }
+        } catch (error) {
+            console.error('Error playing pinyin sound sequence:', error);
+            // Clean up on error
+            if (sound) {
+                try {
+                    await sound.unloadAsync();
+                    setSound(null);
+                } catch (cleanupError) {
+                    console.error('Error cleaning up sound after error:', cleanupError);
+                }
+            }
         }
     }
 

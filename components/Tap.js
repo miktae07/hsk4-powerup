@@ -12,6 +12,10 @@ const Tap = (props) => {
     const [sound, setSound] = React.useState();
 
     function setSoundUrl(url) {
+        if (typeof url !== 'string') {
+            console.log('Invalid or undefined sound URL');
+            return [];
+        }
         const soundUrlArr = [];
         const match = url.match(/^([a-zA-Z]+)(\d.*)/);
 
@@ -23,12 +27,17 @@ const Tap = (props) => {
 
             //   console.log(firstPart, secondPart);
         } else {
-            console.log('Invalid string');
+            console.log('Invalid string format for URL:', url);
         }
         return soundUrlArr;
     }
 
     async function playSound() {
+        // Prevent crash if soundUrl is not available
+        if (!props.soundUrl) {
+            console.log("No sound URL provided.");
+            return;
+        }
 
         // Always stop and unload previous sound before playing a new one
         if (sound) {
@@ -40,30 +49,41 @@ const Tap = (props) => {
             }
         }
 
-        if (setSoundUrl(props.soundUrl)[1] == '') {
+        const soundParts = setSoundUrl(props.soundUrl);
+
+        if (soundParts.length === 0) {
+            // If sound URL is a single part (or invalid format)
             const { sound: newSound } = await Audio.Sound.createAsync({
                 uri: "https://cdn.yoyochinese.com/audio/pychart/"
                     + props.soundUrl + ".mp3"
             });
             setSound(newSound);
             await newSound.playAsync();
+        } else if (soundParts[1] === '') {
+            // If sound URL has one part after processing
+            const { sound: newSound } = await Audio.Sound.createAsync({
+                uri: "https://cdn.yoyochinese.com/audio/pychart/"
+                    + soundParts[0] + ".mp3"
+            });
+            setSound(newSound);
+            await newSound.playAsync();
         } else {
+            // If sound URL has two parts
             const { sound: firstSound } = await Audio.Sound.createAsync({
                 uri: "https://cdn.yoyochinese.com/audio/pychart/"
-                    + setSoundUrl(props.soundUrl)[0] + ".mp3"
+                    + soundParts[0] + ".mp3"
             });
             setSound(firstSound);
             await firstSound.playAsync();
 
             setTimeout(async () => {
-                // Stop and unload previous sound before playing the next
                 try {
                     await firstSound.stopAsync();
                     await firstSound.unloadAsync();
                 } catch (e) {}
                 const { sound: secondSound } = await Audio.Sound.createAsync({
                     uri: "https://cdn.yoyochinese.com/audio/pychart/"
-                        + setSoundUrl(props.soundUrl)[1] + ".mp3"
+                        + soundParts[1] + ".mp3"
                 });
                 setSound(secondSound);
                 await secondSound.playAsync();

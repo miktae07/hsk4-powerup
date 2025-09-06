@@ -21,7 +21,7 @@ export const useStore = create(
             setIndex: (i) => set({ index: i }),
             pushToArray: (r) => {
                 if (r && r[0]) {
-                    set((state) => ({ wArray: [...state.wArray, r[0], r[1], r[2], r[3], r[4]] }))
+                    set((state: any) => ({ wArray: [...state.wArray, r[0], r[1], r[2], r[3], r[4]] }))
                    // console.log(get());
                     console.log(r);
                    // console.log(r[0]);

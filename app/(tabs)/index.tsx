@@ -1,5 +1,7 @@
 import { DailyGrammarSection } from '@/components/ui/DailyGrammar';
-import hskData from '@assets/meta/hsk.json';
+import { toggleDarkMode, useRefresh, useStore } from '@/hooks/useStore';
+import hskData from '@assets/meta/hsk4.json';
+import data from '@assets/meta/hsk4_grammar.json';
 import Tap from '@components/Tap';
 import Loading from '@components/ui/Loading';
 import { useRouter } from 'expo-router';
@@ -16,7 +18,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { toggleDarkMode, useRefresh, useStore } from '@/hooks/useStore';
 
 const screenDimensions = Dimensions.get('screen');
 
@@ -40,14 +41,29 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const [showReminder, setShowReminder] = useState<boolean>(false);
   const [wordCounts, setWordCounts] = useState<WordCounts>({});
 
-  const n = useStore(state => state.n);
-  const removeN = useStore(state => state.removeN);
-  const refresh = useRefresh(state => state.refresh);
-  const updateT = useStore(state => state.updateT);
-  const addWords = useStore(state => state.pushToArray);
-  const clearQ = useStore(state => state.clearQ);
-  const killScore = useStore(state => state.killScore);
-  const isDarkMode = toggleDarkMode(state => state.isDarkMode);
+  const n = useStore((state: any) => state.n);
+  const removeN = useStore((state: any) => state.removeN);
+  const refresh = useRefresh((state: any) => state.refresh);
+  const updateT = useStore((state: any) => state.updateT);
+  const addWords = useStore((state: any) => state.pushToArray);
+  const clearQ = useStore((state: any) => state.clearQ);
+  const killScore = useStore((state: any) => state.killScore);
+  const isDarkMode = toggleDarkMode((state: any) => state.isDarkMode);
+
+  const getDayOfYear = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = (now as any) - (start as any);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const day = Math.floor(diff / oneDay);
+    console.info("Day is ", day);
+    return day;
+  };
+
+  const dayOfYear = getDayOfYear();
+  const totalLessons = data.lessons.length;
+  const lessonId = (dayOfYear % totalLessons) + 1;
+  console.log("lessonId: ", lessonId)
 
   useEffect(() => {
     console.log('useEffect [] ran');
@@ -85,15 +101,15 @@ export default function HomeScreen({ navigation }: HomeProps) {
 
   const generateRandomNumbers = () => {
     const numbers: number[] = [];
-    for (let i = 0; i < 3; i++) {
-      let n = Math.floor(Math.random() * 601);
+    const max = hskData.length;
+    for (let i = 0; i < 4; i++) {
+      let n = Math.floor(Math.random() * max);
       numbers.push(n);
     }
-    let n = Math.floor(Math.random() * 601) + 600;
-    numbers.push(n);
     console.log('Generated random numbers:', numbers);
     setRandomNumbers(numbers);
   };
+
 
   const handlePress = () => {
     router.push({ pathname: '/quiz', params: { randomNumbers } });
@@ -135,20 +151,24 @@ export default function HomeScreen({ navigation }: HomeProps) {
             </View>
           </Modal>
           <View style={styles.content}>
-            {randomNumbers.map((number, index) => (
-              <Tap
-                key={index}
-                simplified={hskData.words[number]['translation-data'].simplified}
-                traditional={hskData.words[number]['translation-data'].traditional}
-                pinyin={hskData.words[number]['translation-data'].pinyin}
-                soundUrl={hskData.words[number]['translation-data']['pinyin-numbered']}
-                meaning={hskData.words[number]['translation-data'].english}
-                index={number}
-                count={wordCounts[number]}
-              />
-            ))}
+            {randomNumbers.map((number, index) => {
+              const word = hskData[number];
+              if (!word) return null; // Prevent crash if out of bounds
+              return (
+                <Tap
+                  key={index}
+                  simplified={word['translation-data'].simplified}
+                  traditional={word['translation-data'].traditional}
+                  pinyin={word['translation-data'].pinyin}
+                  soundUrl={word['translation-data']['pinyin-numbered']}
+                  meaning={word['translation-data'].english}
+                  index={number}
+                  count={wordCounts[number]}
+                />
+              );
+            })}
           </View>
-          <DailyGrammarSection />
+          <DailyGrammarSection lessonId={lessonId} />
           <View style={styles.buttonContainer}>
             <View style={styles.button}>
               <Button title="Questions" onPress={handlePress} />
