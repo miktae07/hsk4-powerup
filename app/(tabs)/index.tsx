@@ -48,22 +48,33 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const addWords = useStore((state: any) => state.pushToArray);
   const clearQ = useStore((state: any) => state.clearQ);
   const killScore = useStore((state: any) => state.killScore);
+  const setDailyGrammar = useStore((state: any) => state.setDailyGrammar);
   const isDarkMode = toggleDarkMode((state: any) => state.isDarkMode);
 
+  // Move lessonId computation BEFORE useEffect that depends on it
   const getDayOfYear = () => {
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 0);
     const diff = (now as any) - (start as any);
     const oneDay = 1000 * 60 * 60 * 24;
     const day = Math.floor(diff / oneDay);
-    console.info("Day is ", day);
+    console.info('Day is ', day);
     return day;
   };
 
   const dayOfYear = getDayOfYear();
   const totalLessons = data.lessons.length;
   const lessonId = (dayOfYear % totalLessons) + 1;
-  console.log("lessonId: ", lessonId)
+  console.log('lessonId: ', lessonId);
+
+  useEffect(() => {
+    const lesson = data.lessons.find(l => l.lessonId === lessonId);
+    if (lesson && lesson.grammarPoints.length > 0) {
+      const randomIndex = Math.floor(Math.random() * lesson.grammarPoints.length);
+      const grammarPoint = lesson.grammarPoints[randomIndex];
+      setDailyGrammar(grammarPoint);
+    }
+  }, [lessonId, setDailyGrammar]);
 
   useEffect(() => {
     console.log('useEffect [] ran');
@@ -110,7 +121,6 @@ export default function HomeScreen({ navigation }: HomeProps) {
     setRandomNumbers(numbers);
   };
 
-
   const handlePress = () => {
     router.push({ pathname: '/quiz', params: { randomNumbers } });
   };
@@ -119,16 +129,12 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const color = isDarkMode ? '#fff' : '#000';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}> 
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       {isLoading ? (
         <Loading />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-          <Modal
-            visible={showReminder}
-            animationType="fade"
-            transparent={true}
-          >
+          <Modal visible={showReminder} animationType="fade" transparent={true}>
             <View style={styles.modalView}>
               <Text style={styles.modalText}>Do you want to test your HSK words now?</Text>
               <View style={styles.modalBtnContainer}>
@@ -141,10 +147,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
                 >
                   <Text style={styles.text}>OK</Text>
                 </Pressable>
-                <Pressable
-                  style={styles.btnClose}
-                  onPress={() => setShowReminder(false)}
-                >
+                <Pressable style={styles.btnClose} onPress={() => setShowReminder(false)}>
                   <Text style={styles.text}>Cancel</Text>
                 </Pressable>
               </View>
@@ -156,7 +159,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
               if (!word) return null; // Prevent crash if out of bounds
               return (
                 <Tap
-                  key={index}
+                  key={number /* use stable key rather than index */}
                   simplified={word['translation-data'].simplified}
                   traditional={word['translation-data'].traditional}
                   pinyin={word['translation-data'].pinyin}
@@ -203,18 +206,24 @@ const styles = StyleSheet.create({
   },
   button: {
     marginHorizontal: 10,
-    // You can add more styling as needed
   },
   modalView: {
-    width: screenDimensions.width / 3,
-    height: screenDimensions.height / 6,
+    width: screenDimensions.width / 1.5,
+    // use a larger width so content fits nicely on small screens
+    minHeight: 140,
     backgroundColor: '#fff',
     borderRadius: 20,
-    marginHorizontal: screenDimensions.width / 3,
-    marginVertical: screenDimensions.height / 3,
+    marginHorizontal: screenDimensions.width / 12,
+    marginVertical: screenDimensions.height / 4,
     padding: 20,
     alignItems: 'center',
-    boxShadow: '0px 2px 4px rgba(0,0,0,0.25)', // Add this line
+    // React Native shadow (iOS)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    // elevation for Android
+    elevation: 5,
   },
   modalText: {
     fontSize: 21,
@@ -233,6 +242,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     elevation: 3,
     backgroundColor: 'blue',
+    marginRight: 8,
   },
   btnClose: {
     alignItems: 'center',

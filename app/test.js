@@ -13,7 +13,6 @@ import congrat from '@assets/images/congrat.png';
 const screenDimensions = Dimensions.get('screen');
 
 const Test = () => {
-
   const [showModal, setShowModal] = useState(false);
   const wArray = useStore(state => state.wArray);
   const t = useStore(state => state.t);
@@ -24,52 +23,75 @@ const Test = () => {
   const removeQCorrect = useBearsStore(state => state.removeQCorrect);
   const setIsFinish = useBearsStore(state => state.setIsFinish);
 
+  const [soundObj, setSoundObj] = useState(null);
+
+  // Play sound and cleanup properly
   async function playSound(m_type) {
-    if (m_type === 1) {
-      const { sound } = await Audio.Sound.createAsync(
-        require('@assets/audio/level_complete.mp3')
-      );
-      await sound.playAsync()
-    }
-    if (m_type === 0) {
-      const { sound } = await Audio.Sound.createAsync(
-        require('@assets/audio/level_incomplete.mp3')
-      );
-      await sound.playAsync()
+    try {
+      // unload previous if any
+      if (soundObj) {
+        try { await soundObj.unloadAsync(); } catch (e) { /* ignore */ }
+        setSoundObj(null);
+      }
+
+      const asset = m_type === 1
+        ? require('@assets/audio/level_complete.mp3')
+        : require('@assets/audio/level_incomplete.mp3');
+
+      const { sound } = await Audio.Sound.createAsync(asset);
+      setSoundObj(sound);
+      await sound.playAsync();
+
+      // auto unload when finished
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.didJustFinish) {
+          try {
+            await sound.unloadAsync();
+          } catch (e) { /* ignore */ }
+          setSoundObj(null);
+        }
+      });
+    } catch (err) {
+      console.log('playSound error:', err);
     }
   }
 
   const FinishTest = () => {
-    
-    if (20 - qAnswered) {
-      if (Platform.OS == 'web') {
-        alert('You need to complete all of the questions')
+    // clearer check: require all 20 answered
+    if (qAnswered < 20) {
+      const msg = 'You need to complete all of the questions';
+      if (Platform.OS === 'web') {
+        alert(msg);
+      } else {
+        Alert.alert(msg);
       }
-      else {
-        Alert.alert('You need to complete all of the questions')
-      }
+      return;
     }
-    else {
-      if(qCorrect/20 >= 0.8)
-      {
-        playSound(1);
-      }
-      else{
-        playSound(0);
-      }
-      console.log(qAnswered);
-      // console.log("Finish Test");
-      setShowModal(true);
-      setIsFinish(true);
+
+    // play success or fail sound
+    if (qCorrect / 20 >= 0.8) {
+      playSound(1);
+    } else {
+      playSound(0);
     }
+
+    setShowModal(true);
+    setIsFinish(true);
   }
 
   useEffect(() => {
     removeQAnswered();
     removeQCorrect();
     setIsFinish(false);
-    // console.log(t);
-  }, [])
+
+    // cleanup sound on unmount
+    return () => {
+      if (soundObj) {
+        soundObj.unloadAsync().catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <ScrollView stickyHeaderIndices={[0]}>
@@ -84,39 +106,29 @@ const Test = () => {
               <View style={styles.modalLeft}>
                 <Text style={styles.modalText}>
                   {
-                    qCorrect / 20 < 0.8 ?
+                    qCorrect / 20 < 0.8 ? (
                       <Text> Failed! </Text>
-                      : <View>
+                    ) : (
+                      <View>
                         <Text> Congratulate!
                           You have passed the test!</Text>
-                        <Image
-                          source={congrat}
-                          style={styles.congrat}
-                        />
-                        <Image
-                          source={congrat}
-                          style={styles.congrat}
-                        />
-                        <Image
-                          source={congrat}
-                          style={styles.congrat}
-                        />
+                        <Image source={congrat} style={styles.congrat} />
+                        <Image source={congrat} style={styles.congrat} />
+                        <Image source={congrat} style={styles.congrat} />
                       </View>
+                    )
                   }
                 </Text>
               </View>
               <View style={styles.separator} />
               <View style={styles.modalRight}>
                 <Text style={styles.modalText}>
-                  Your score: <Text>{qCorrect} / 20 questions</Text>,
+                  Your score: <Text>{qCorrect} / 20 questions</Text>
                 </Text>
               </View>
             </View>
             <View style={styles.imageContainer}>
-              {qCorrect / 20 >= 0.8 ? <Image
-                source={imgsrc}
-                style={styles.image}
-              /> : null}
+              {qCorrect / 20 >= 0.8 ? <Image source={imgsrc} style={styles.image} /> : null}
             </View>
             <View style={styles.modalBtnContainer}>
               <Pressable style={styles.btnOpen} onPress={() => { setShowModal(!showModal) }}>
@@ -126,19 +138,40 @@ const Test = () => {
           </View>
         </Modal>
       </View>
+
       {
-        wArray.map((w, i) => (
-          (i + 1 <= 20 * t) && (i + 1 >= 20 * (t - 1) + 1) ?
-            <TestTap key={i} index={i + 1} testTitle={
-              hskData.words[w]['translation-data'].english
-            }
-              pinyin={hskData.words[w]['translation-data'].pinyin}
-              sound={hskData.words[w]['translation-data']['pinyin-numbered']}
-              correctAnswer={hskData.words[w]['translation-data'].simplified}
-            ></TestTap>
-            : null
-        ))
+        wArray.map((w, i) => {
+          // only render items for the current page t (same logic you had)
+          if (!((i + 1 <= 20 * t) && (i + 1 >= 20 * (t - 1) + 1))) {
+            return null;
+          }
+
+          // safe access: support both hskData[index] and hskData.words[index]
+          const wordEntry = (hskData && hskData[w]) ? hskData[w]
+            : (hskData && hskData.words && hskData.words[w]) ? hskData.words[w]
+            : null;
+
+          if (!wordEntry || !wordEntry['translation-data']) {
+            // skip rendering this item if data missing (prevents crash)
+            console.warn(`Missing word data for index/key: ${String(w)} (map idx ${i})`);
+            return null;
+          }
+
+          const td = wordEntry['translation-data'];
+
+          return (
+            <TestTap
+              key={i}
+              index={i + 1}
+              testTitle={td.english}
+              pinyin={td.pinyin}
+              sound={td['pinyin-numbered']}
+              correctAnswer={td.simplified}
+            />
+          );
+        })
       }
+
       <View style={styles.buttonContainer}>
         <Pressable style={styles.button} onPress={() => { FinishTest() }}>
           <Text style={styles.text}>Submit</Text>

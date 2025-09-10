@@ -1,3 +1,4 @@
+// TypingQuiz.js (updated)
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Button, TouchableOpacity, Dimensions } from 'react-native';
 import hskData from '@assets/meta/hsk4.json';
@@ -12,7 +13,8 @@ const TypingQuiz = () => {
     const route = useRoute();
     const increaseN = useStore(state => state.increaseN);
     const increaseQ = useStore(state => state.increaseQ);
-    const updateScore = useStore(state => state.updateScore);
+    const updateScore = useStore(state => state.updateScore); // increments (existing)
+    const decreaseScore = useStore(state => state.decreaseScore); // optional store fn to decrement
     const n = useStore(state => state.n);
     const q = useStore(state => state.q);
     const score = useStore(state => state.score);
@@ -24,9 +26,11 @@ const TypingQuiz = () => {
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [index, setIndex] = useState(0);
     const [sound, setSound] = useState();
-    const [questions, setQuestions] = useState([]);
+    const [questions, setQuestions] = useState(null);
     const [placeholder, setPlaceholder] = useState('Type your answer')
     const [text, setText] = useState('');
+    const [attempts, setAttempts] = useState(0); // count wrong attempts for current question
+    const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
 
     const fetchData = (indexNumber) => {
         if (!Array.isArray(randomNumbers) || indexNumber >= randomNumbers.length) {
@@ -46,11 +50,16 @@ const TypingQuiz = () => {
             pinyin: word.pinyin,
             correctAnswer: word.english,
         });
+
+        // reset per-question state
+        setText('');
+        setAttempts(0);
+        setShowCorrectAnswer(false);
+        setPlaceholder('Type your answer');
     };
 
     async function playSound(m_type) {
         try {
-            // Unload previous sound if exists
             if (sound) {
                 await sound.unloadAsync();
                 setSound(null);
@@ -66,7 +75,6 @@ const TypingQuiz = () => {
             );
             setSound(newSound);
 
-            // Add error handler for playback completion
             newSound.setOnPlaybackStatusUpdate(async (status) => {
                 if (status.didJustFinish) {
                     try {
@@ -109,7 +117,6 @@ const TypingQuiz = () => {
         
         initAudio();
         
-        // Clean up sound when component unmounts
         return () => {
             if (sound) {
                 sound.unloadAsync().catch(error => {
@@ -128,54 +135,91 @@ const TypingQuiz = () => {
 
     useEffect(() => {
         setText('');
-        increaseN();
+        increaseN && increaseN();
     }, []);
 
     useEffect(() => {
         if (index >= 0) {
             fetchData(index);
-            // Let's not auto-play sound on index change
-            // User needs to click the sound button instead
         }
     }, [index]);
 
-    useEffect(() => {
-        // console.log(text);
-        if (text == questions.question) {
-            setText('')
-            setPlaceholder('Type your answer')
-            updateScore()
-            increaseQ()
-            playSound(true).then(() => {
-                fetchData(index + 1)
-            })
-        }
-    }, [text]);
+    // helper to advance to next question (used for correct or after penalty)
+    const goToNextQuestion = async (currentIdx) => {
+        // keep behavior consistent with previous code: try to play success then load next
+        // but we will fetch next directly using index + 1 to avoid waiting on store q update
+        const nextIndex = (typeof currentIdx === 'number') ? currentIdx + 1 : index + 1;
+        // increment global Q (store) so other components stay in sync
+        increaseQ && increaseQ();
+        // small delay to allow sound to play if needed
+        setTimeout(() => {
+            fetchData(nextIndex);
+        }, 150); // short delay
+    };
 
-    function parsePinyinSyllables(pinyin) {
-        // Remove spaces and split into syllables
-        const cleanPinyin = pinyin.trim().replace(/\s+/g, '');
-        const syllables = [];
-        let currentSyllable = '';
-        
-        for (let i = 0; i < cleanPinyin.length; i++) {
-            const char = cleanPinyin[i];
-            if (/[0-9]/.test(char)) {
-                // When we hit a number, complete the current syllable
-                currentSyllable += char;
-                syllables.push(currentSyllable);
-                currentSyllable = '';
-            } else {
-                currentSyllable += char;
-            }
+    // centralised submit handler
+    const handleSubmitEditing = async () => {
+        if (!questions) return;
+
+        const typed = text ? String(text).trim() : '';
+        const expected = questions.question || '';
+
+        if (typed === expected) {
+            // correct
+            setText('');
+            setPlaceholder('Type your answer');
+            if (typeof updateScore === 'function') updateScore();
+            await playSound(true);
+            goToNextQuestion(index);
+            return;
         }
-        
-        return syllables;
-    }
+
+        // incorrect
+        await playSound(false);
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+
+        // If attempts reaches threshold (>=3) -> apply penalty, show correct answer, then next Q
+        const THRESHOLD = 3; // >=3 wrong attempts triggers -1 point
+        if (newAttempts >= THRESHOLD) {
+            // apply penalty: try store decreaseScore(), otherwise try calling updateScore(-1)
+            if (typeof decreaseScore === 'function') {
+                decreaseScore();
+            } else if (typeof updateScore === 'function') {
+                // best-effort: call updateScore with -1 (if store supports an argument)
+                try {
+                    updateScore(-1);
+                } catch (err) {
+                    console.warn('updateScore(-1) failed or not supported:', err);
+                }
+            }
+
+            // show correct answer to user
+            setShowCorrectAnswer(true);
+
+            // advance to next question after short delay so user sees the correct answer
+            setTimeout(() => {
+                goToNextQuestion(index);
+            }, 900);
+            return;
+        }
+
+        // otherwise allow user to try again (focus stays)
+        // Optionally update placeholder to give hint or remaining tries
+        const remaining = THRESHOLD - newAttempts;
+        setPlaceholder(`Incorrect — ${remaining} attempt(s) left`);
+    };
+
+    const handleTextChange = (newText) => {
+        setText(newText);
+    };
+
+    const handleIconPress = () => {
+        setPlaceholder(questions?.pinyin || '');
+    };
 
     const playPinyinSound = async () => {
         try {
-            // Input validation
             if (!Array.isArray(randomNumbers) || !hskData) {
                 console.error('Missing data:', { randomNumbers, hskData: !!hskData });
                 return;
@@ -199,7 +243,6 @@ const TypingQuiz = () => {
                 return;
             }
             
-            // Clean up any previous sound
             if (sound) {
                 try {
                     await sound.unloadAsync();
@@ -210,11 +253,8 @@ const TypingQuiz = () => {
             }
 
             const pinyinNumbered = wordData['pinyin-numbered'];
-            console.log('Playing pinyin:', pinyinNumbered);
-            
             const syllables = parsePinyinSyllables(pinyinNumbered);
             
-            // Play each syllable in sequence
             for (let i = 0; i < syllables.length; i++) {
                 const syllable = syllables[i];
                 const url = `https://cdn.yoyochinese.com/audio/pychart/${syllable.toLowerCase()}.mp3`;
@@ -226,7 +266,6 @@ const TypingQuiz = () => {
                     );
                     setSound(newSound);
                     
-                    // Wait for the sound to finish
                     await new Promise((resolve, reject) => {
                         newSound.setOnPlaybackStatusUpdate(status => {
                             if (status.didJustFinish) {
@@ -237,11 +276,9 @@ const TypingQuiz = () => {
                         });
                     });
                     
-                    // Clean up after each syllable
                     await newSound.unloadAsync();
                     setSound(null);
                     
-                    // Small pause between syllables
                     if (i < syllables.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, 200));
                     }
@@ -251,7 +288,6 @@ const TypingQuiz = () => {
             }
         } catch (error) {
             console.error('Error playing pinyin sound sequence:', error);
-            // Clean up on error
             if (sound) {
                 try {
                     await sound.unloadAsync();
@@ -261,32 +297,26 @@ const TypingQuiz = () => {
                 }
             }
         }
-    }
-
-    const handleTextChange = (newText) => {
-        setText(newText);
     };
 
-    const handleSubmitEditing = () => {
-        if (text == questions.question) {
-            console.log('Correct')
-            setText('')
-            setPlaceholder('Type your answer')
-            updateScore()
-            increaseQ()
-            playSound(true).then(() => {
-                fetchData(index + 1)
-            })
+    function parsePinyinSyllables(pinyin) {
+        const cleanPinyin = pinyin.trim().replace(/\s+/g, '');
+        const syllables = [];
+        let currentSyllable = '';
+        
+        for (let i = 0; i < cleanPinyin.length; i++) {
+            const char = cleanPinyin[i];
+            if (/[0-9]/.test(char)) {
+                currentSyllable += char;
+                syllables.push(currentSyllable);
+                currentSyllable = '';
+            } else {
+                currentSyllable += char;
+            }
         }
-        else {
-            console.log('Incorrect')
-            playSound(false)
-        }
+        
+        return syllables;
     }
-
-    const handleIconPress = () => {
-        setPlaceholder(questions.pinyin)
-    };
 
     return (
         <View>
@@ -295,18 +325,19 @@ const TypingQuiz = () => {
             {questions ? (
                 <View style={(screenDimensions.width > 480) ? styles.questions : styles.questionsPhone}>
                     <Text style={styles.questionsTitle}>
-                        <TouchableOpacity
-                            onPress={() =>
-                                playPinyinSound()}>
-                            <Ionicons style={styles.iconicsTitle}
-                                name="volume-high" size={48} color="black" />
+                        <TouchableOpacity onPress={() => playPinyinSound()}>
+                            <Ionicons style={styles.iconicsTitle} name="volume-high" size={48} color="black" />
                         </TouchableOpacity>
                         {questions.correctAnswer}
                     </Text>
                     <View>
                         <View style={styles.inputContainer}>
-                            <TextInput autoFocus={true} style={styles.input} placeholder={placeholder}
-                                onChangeText={handleTextChange} value={text}
+                            <TextInput
+                                autoFocus={true}
+                                style={styles.input}
+                                placeholder={placeholder}
+                                onChangeText={handleTextChange}
+                                value={text}
                                 onSubmitEditing={() => handleSubmitEditing()}
                             />
                             <TouchableOpacity style={styles.helpContainer} onPress={handleIconPress}>
@@ -315,6 +346,19 @@ const TypingQuiz = () => {
                         </View>
                         <View style={styles.btnContainer}>
                             <Button style={styles.btn} title="Submit" onPress={() => handleSubmitEditing()} />
+                        </View>
+
+                        {showCorrectAnswer ? (
+                            <View style={{ marginTop: 12 }}>
+                                <Text style={{ color: 'red', fontWeight: '700' }}>
+                                    Đáp án đúng: {questions.question}
+                                </Text>
+                            </View>
+                        ) : null}
+
+                        {/* show attempts info */}
+                        <View style={{ marginTop: 8 }}>
+                            <Text>Sai: {attempts} / 3</Text>
                         </View>
                     </View>
                 </View>

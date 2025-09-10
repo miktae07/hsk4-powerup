@@ -121,17 +121,6 @@ const MultipleChoiceQuiz = () => {
     });
   };
 
-  let previousNumbers = [];
-
-  const generateUniqueNumber = () => {
-    let randomNumber = Math.floor(Math.random() * 5);
-    while (previousNumbers.includes(randomNumber)) {
-      randomNumber = Math.floor(Math.random() * 5);
-    }
-    previousNumbers.push(randomNumber);
-    return randomNumber;
-  };
-
   async function playSound(m_type) {
     // console.log('Loading Sound');
 
